@@ -1,0 +1,10 @@
+[
+  {
+    "title": "Python",
+    "text": "Interpreted, high-level and general-purpose programming language. Created by Guido van Rossum and first released in 1991."
+  },
+  {
+    "title": "Flask",
+    "text": "Micro web framework written in Python. It is classified as a microframework because it does not require particular tools or libraries."
+  }
+]
