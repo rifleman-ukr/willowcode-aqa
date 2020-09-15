@@ -1,20 +1,17 @@
-import os
+import json
 import random
 
 from flask import Flask
 from flask import jsonify
 from flask import request
+from flask import abort
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import exc
-
-from src.generate_db.create_db import create_database
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-marshmallow = Marshmallow(app)
 
 
 class WikiArticle(db.Model):
@@ -22,49 +19,91 @@ class WikiArticle(db.Model):
     text = db.Column(db.String(280))
     text_version = db.Column(db.Integer)
 
-    def __init__(self, title, text):
-        self.title = title
-        self.text = text
-        self.version = 0
+    def __init__(self, title, text, version=1):
+        self.title = title.lower().capitalize()
+        self.text = json.dumps([{"text_version": 0, "text": "An empty article"},
+                                {"text_version": 1, "text": text}])
+        self.text_version = version
 
 
-class ArticleSchema(marshmallow.Schema):
+class ArticleSchema(Marshmallow(app).Schema):
     class Meta:
-        fields = ('title', 'text')
-
-
-article_schema = ArticleSchema()
+        fields = ('title', 'text', 'text_version')
 
 
 @app.route('/', methods=['POST'])
-def add_article():
-    title = request.json['title']
+def add_article() -> dict:
+    title = request.json['title'].lower().capitalize()
     text = request.json['text']
 
-    db.session.add(new_article := WikiArticle(title, text))
-    try:
-        db.session.commit()
-    except exc.IntegrityError:
-        return "This article already exist, try to update it"
+    if article := WikiArticle.query.get(title):
+        versions = json.loads(article.text)
+        if text in [old_version['text'] for old_version in versions]:
+            return jsonify({"error": "This text is outdated"})
+        versions.append({"text_version": (version := len(versions)), "text": text})
+        article.text = json.dumps(versions)
+        article.text_version = version
     else:
-        return article_schema.jsonify(new_article)
+        db.session.add(article := WikiArticle(title, text))
+    db.session.commit()
+    return parse_db(ArticleSchema().dump(article))
 
 
 @app.route('/', methods=['GET'])
-def get_wiki():
-    return jsonify(ArticleSchema(many=True).dump(WikiArticle.query.all()))
+def get_wiki() -> dict:
+    return parse_db(ArticleSchema(many=True).dump(WikiArticle.query.all()))
 
 
 @app.route('/random', methods=['GET'])
-def get_random_article():
-    return jsonify(ArticleSchema().dump(random.choice(WikiArticle.query.all())))
+def get_random_article() -> dict:
+    return parse_db(ArticleSchema().dump(random.choice(WikiArticle.query.all())))
 
 
-def set_page_version(self, page_title, version):
-    pass
+@app.route('/update', methods=['POST'])
+def set_page_version():
+    if request.headers.get('Authorization') == 'admin':
+        version = request.json['version']
+        if not isinstance(version, int):
+            abort(415)
+        if article := WikiArticle.query.get(request.json['title'].lower().capitalize()):
+            if version > len(json.loads(article.text)) or version < 0:
+                return jsonify({"error": "This version does not exist"})
+            article.text_version = version
+            db.session.commit()
+            return parse_db(ArticleSchema().dump(article))
+        else:
+            abort(404)
+    else:
+        abort(401)
+
+
+@app.route("/versions", methods=['GET'])
+def get_article_versions():
+    if request.headers.get('Authorization') == 'admin':
+        if not isinstance(request.json['title'], str):
+            abort(415)
+        if article := WikiArticle.query.get(request.json['title'].lower().capitalize()):
+            return jsonify({"title": article.title,
+                            "versions": [version for version in json.loads(article.text)]})
+        else:
+            abort(404)
+    else:
+        abort(401)
+
+
+def parse_db(schema):
+    if isinstance(schema, list):
+        response = list()
+        for article in schema:
+            for version in json.loads(article['text']):
+                if version['text_version'] == article['text_version']:
+                    response.append({"title": article['title'], "text": version['text']})
+    else:
+        for version in json.loads(schema['text']):
+            if version['text_version'] == schema['text_version']:
+                response = {"title": schema['title'], "text": version['text']}
+    return jsonify(response)
 
 
 if __name__ == "__main__":
-    if not os.path.exists('db.sqlite'):
-        create_database()
     app.run(debug=True)
