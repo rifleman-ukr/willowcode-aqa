@@ -1,10 +1,11 @@
 import json
+import os
 import random
 
 from flask import Flask
+from flask import abort
 from flask import jsonify
 from flask import request
-from flask import abort
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
 
@@ -59,7 +60,7 @@ def get_random_article() -> dict:
     return parse_db(ArticleSchema().dump(random.choice(WikiArticle.query.all())))
 
 
-@app.route('/update', methods=['POST'])
+@app.route('/version_set', methods=['POST'])
 def set_page_version():
     if request.headers.get('Authorization') == 'admin':
         version = request.json['version']
@@ -106,4 +107,10 @@ def parse_db(schema):
 
 
 if __name__ == "__main__":
+    if not os.path.exists(os.path.join(os.path.dirname(__file__), "db.sqlite")):
+        db.create_all()
+        for article in json.load(open(os.path.join(os.path.dirname(__file__), "db_data.json"))):
+            if article.get("title"):
+                db.session.add(WikiArticle(article["title"], article.get("text")))
+        db.session.commit()
     app.run(debug=True)
