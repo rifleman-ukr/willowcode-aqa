@@ -1,11 +1,13 @@
 Test task for Willowcode Automation QA Engineer position
 
-To run on local environment run main.py with Python 3.8 (not lower).
+NOTE: Do not forget to install required libs via "pip install -r requrements.txt" command before launch.
+Also using virtual environment is highly recommended.
+
+To run on local environment run "python src/wsgi.py" with Python 3.8 (not lower).
 
 To launch tests just execute "pytest" command in project directory.
 
-NOTE: Do not forget to install required libs via "pip install -r requrements.txt" command before launch.
-Also using virtual environment is highly recommended.
+This app is also deployed on Heroku and available via https://json-wiki.herokuapp.com/ address.
 
 What does this API can?
 1. GET request to '/' endpoint returns list of jsons of all available in database articles.
