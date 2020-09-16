@@ -115,16 +115,3 @@ def parse_db(schema):
             if version['text_version'] == schema['text_version']:
                 response = {"title": schema['title'], "text": version['text']}
     return jsonify(response)
-
-
-if __name__ == "__main__":
-    if not os.path.exists(os.path.join(os.path.dirname(__file__),
-                                       "db.sqlite")):
-        db.create_all()
-        for article in json.load(open(os.path.join(os.path.dirname(__file__),
-                                                   "db_data.json"))):
-            if article.get("title"):
-                db.session.add(WikiArticle(article["title"],
-                                           article.get("text")))
-        db.session.commit()
-    app.run(threaded=True)
