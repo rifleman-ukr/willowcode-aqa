@@ -14,4 +14,4 @@ if __name__ == "__main__":
                 db.session.add(WikiArticle(article["title"],
                                            article.get("text")))
         db.session.commit()
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', port=os.environ.get('PORT'))
