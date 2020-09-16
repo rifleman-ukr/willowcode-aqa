@@ -127,4 +127,4 @@ if __name__ == "__main__":
                 db.session.add(WikiArticle(article["title"],
                                            article.get("text")))
         db.session.commit()
-    app.run()
+    app.run(threaded=True)
