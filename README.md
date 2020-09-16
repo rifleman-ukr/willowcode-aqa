@@ -2,6 +2,8 @@ Test task for Willowcode Automation QA Engineer position
 
 To run on local environment run main.py with Python 3.8 (not lower).
 
+To launch tests just execute "pytest" command in project directory.
+
 NOTE: Do not forget to install required libs via "pip install -r requrements.txt" command before launch.
 Also using virtual environment is highly recommended.
 
